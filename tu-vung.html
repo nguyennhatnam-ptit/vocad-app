@@ -70,7 +70,20 @@
 
         function saveToLocalStorage() {
             localStorage.setItem("vocabulary", JSON.stringify(vocabulary));
+            // Ra lệnh đẩy lên mây khi có thay đổi
+            if (window.syncToCloud) {
+                window.syncToCloud(vocabulary);
+            }
         }
+
+        // Lắng nghe tín hiệu khi tải xong dữ liệu từ mây
+        window.addEventListener("cloudDataLoaded", () => {
+            vocabulary = JSON.parse(localStorage.getItem("vocabulary")) || [];
+            updateUI();
+        });
+
+        // Khởi chạy khi mở trang
+        updateUI();
 
         function updateUI() {
             const listElement = document.getElementById("word-list");
