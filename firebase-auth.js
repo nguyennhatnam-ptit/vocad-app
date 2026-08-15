@@ -4,12 +4,12 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signO
 
 // Thông tin "chìa khóa" dự án của Nam
 const firebaseConfig = {
-  apiKey: "AIzaSyAdyeNJCvVAF4yob6xwl2n08KpeiMyQzk8",
-  authDomain: "vocabapp-d0cf1.firebaseapp.com",
-  projectId: "vocabapp-d0cf1",
-  storageBucket: "vocabapp-d0cf1.firebasestorage.app",
-  messagingSenderId: "746405849141",
-  appId: "1:746405849141:web:bdb2cd060acb36088fe97c"
+  apiKey: "AIzaSyCipB052xHDreNLI7WuL5xFiGf-siB9_kY",
+  authDomain: "newapp-stptit.firebaseapp.com",
+  projectId: "newapp-stptit",
+  storageBucket: "newapp-stptit.firebasestorage.app",
+  messagingSenderId: "139068980762",
+  appId: "1:139068980762:web:f86319a1774d5445bcdba3"
 };
 
 // Khởi động Firebase
