@@ -5,7 +5,7 @@ import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/fireb
 
 // Thông tin "chìa khóa" dự án mới của Nam
 const firebaseConfig = {
-  apiKey: "AIzaSyCipB052xHDreNLI7WuL5xFiGf-siB9_kY",
+  apiKey: "AIzaSyCipB052xHDreNlI7WuL5xFiGf-siB9_kY",
   authDomain: "newapp-stptit.firebaseapp.com",
   projectId: "newapp-stptit",
   storageBucket: "newapp-stptit.firebasestorage.app",
