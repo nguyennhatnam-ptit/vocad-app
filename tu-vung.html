@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Từ Vựng - VocabApp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">Vocab<span>App</span></a>
+        <ul>
+            <li><a href="index.html">Homepage</a></li>
+            <li><a href="tu-vung.html" class="active">Vocabulary</a></li>
+            <li><a href="on-tap.html">Flashcard</a></li>
+            <li><a href="kiem-tra.html">Memory test</a></li>
+            <li><a href="game.html">🎮 Game</a></li>
+        </ul>
+        <div class="user-profile" id="user-profile">
+            <button class="login-btn" onclick="window.loginWithGoogle()">🔑 Đăng nhập</button>
+        </div>
+    </nav>
+
+    <!-- Khối Sao lưu dữ liệu nằm gọn gàng ở đây -->
+    <div class="card" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; padding: 20px 30px;">
+        <h3 style="border: none; margin: 0; font-size: 18px;">💾 Sao lưu dữ liệu</h3>
+        <div style="display: flex; gap: 10px; flex: 1; min-width: 250px;">
+            <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importData(event)">
+            <button onclick="document.getElementById('import-file').click()" style="margin: 0; background: linear-gradient(135deg, #64748b 0%, #475569 100%);">📥 NHẬP FILE</button>
+            <button onclick="exportData()" style="margin: 0; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">📤 XUẤT FILE</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Thêm Từ Mới</h3>
+        <input type="text" id="eng-word" placeholder="Nhập từ Tiếng Anh (VD: apple)">
+        <input type="text" id="ipa-word" placeholder="Nhập Phiên âm (nếu có, VD: /ˈæpl/)">
+        <input type="text" id="vie-word" placeholder="Nhập nghĩa Tiếng Việt (VD: quả táo)">
+        <button onclick="addWord()">Thêm vào kho 🚀</button>
+    </div>
+
+    <div class="card">
+        <h3>Kho Từ Vựng Của Bạn</h3>
+        <ul class="word-list" id="word-list">
+            <!-- Danh sách từ vựng sẽ hiện ở đây -->
+        </ul>
+    </div>
+
+    <!-- Hộp thoại Sửa từ (Modal) -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="card modal-content">
+            <h3 style="margin-top: 0; text-align: center;">Chỉnh sửa từ vựng</h3>
+            <input type="text" id="edit-eng" placeholder="Từ Tiếng Anh">
+            <input type="text" id="edit-ipa" placeholder="Phiên âm (nếu có)">
+            <input type="text" id="edit-vie" placeholder="Nghĩa Tiếng Việt">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="delete-btn" onclick="closeEditModal()" style="flex: 1; height: 42px;">Hủy bỏ</button>
+                <button class="edit-btn" onclick="saveEditedWord()" style="flex: 1; height: 42px; margin: 0; display: flex; justify-content: center;">💾 Lưu lại</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="firebase-auth.js?v=2"></script>
+
+    <script>
+        let vocabulary = JSON.parse(localStorage.getItem("vocabulary")) || [];
+
+        function saveToLocalStorage() {
+            localStorage.setItem("vocabulary", JSON.stringify(vocabulary));
+        }
+
+        function updateUI() {
+            const listElement = document.getElementById("word-list");
+            listElement.innerHTML = "";
+            
+            vocabulary.forEach((wordObj, index) => {
+                let li = document.createElement("li");
+                let ipaDisplay = wordObj.ipa ? ` <span style="color: #94a3b8; font-style: italic;">/${wordObj.ipa}/</span>` : "";
+                
+                li.innerHTML = `
+                    <span><strong>${wordObj.en}</strong>${ipaDisplay} - ${wordObj.vi}</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="edit-btn" onclick="editWord(${index})">✏️ Sửa</button>
+                        <button class="delete-btn" onclick="deleteWord(${index})">🗑️ Xóa</button>
+                    </div>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+        function addWord() {
+            const enInput = document.getElementById("eng-word");
+            const ipaInput = document.getElementById("ipa-word");
+            const viInput = document.getElementById("vie-word");
+
+            const en = enInput.value.trim().toLowerCase();
+            const ipa = ipaInput.value.trim();
+            const vi = viInput.value.trim().toLowerCase();
+
+            if (en === "" || vi === "") {
+                alert("Vui lòng nhập đầy đủ từ Tiếng Anh và nghĩa Tiếng Việt!");
+                return;
+            }
+
+            vocabulary.push({ en: en, ipa: ipa, vi: vi });
+            saveToLocalStorage();
+            updateUI();
+
+            enInput.value = "";
+            ipaInput.value = "";
+            viInput.value = "";
+            enInput.focus();
+        }
+
+        function deleteWord(index) {
+            if (confirm("Bạn có chắc chắn muốn xóa từ này không?")) {
+                vocabulary.splice(index, 1);
+                saveToLocalStorage();
+                updateUI();
+            }
+        }
+
+        // --- HÀM XỬ LÝ HỘP THOẠI SỬA TỪ ---
+        let currentEditIndex = -1;
+
+        function editWord(index) {
+            currentEditIndex = index;
+            const word = vocabulary[index];
+            document.getElementById("edit-eng").value = word.en;
+            document.getElementById("edit-ipa").value = word.ipa || "";
+            document.getElementById("edit-vie").value = word.vi;
+            document.getElementById("edit-modal").classList.add("show");
+        }
+
+        function closeEditModal() {
+            document.getElementById("edit-modal").classList.remove("show");
+            currentEditIndex = -1;
+        }
+
+        function saveEditedWord() {
+            const newEn = document.getElementById("edit-eng").value.trim().toLowerCase();
+            const newIpa = document.getElementById("edit-ipa").value.trim();
+            const newVi = document.getElementById("edit-vie").value.trim().toLowerCase();
+
+            if (newEn === "" || newVi === "") {
+                alert("Không được để trống từ tiếng Anh và tiếng Việt!");
+                return;
+            }
+
+            vocabulary[currentEditIndex].en = newEn;
+            vocabulary[currentEditIndex].ipa = newIpa;
+            vocabulary[currentEditIndex].vi = newVi;
+            
+            saveToLocalStorage();
+            updateUI();
+            closeEditModal();
+        }
+        
+        // --- HÀM XUẤT FILE ---
+        function exportData() {
+            if (vocabulary.length === 0) {
+                alert("Kho từ vựng đang trống, không có gì để xuất!");
+                return;
+            }
+            const dataStr = JSON.stringify(vocabulary, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "VocabApp_Backup.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // --- HÀM NHẬP FILE ---
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        if(confirm("Bấm OK để GỘP từ mới vào kho hiện tại.\nBấm CANCEL để XÓA kho cũ và thay bằng kho mới.")) {
+                            vocabulary = vocabulary.concat(importedData);
+                        } else {
+                            vocabulary = importedData;
+                        }
+                        saveToLocalStorage();
+                        updateUI();
+                        alert("✅ Đã khôi phục dữ liệu thành công!");
+                    } else {
+                        alert("❌ File không đúng định dạng của VocabApp!");
+                    }
+                } catch (error) {
+                    alert("❌ Lỗi khi đọc file!");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ""; // Reset lại input để có thể nạp lại file cũ nếu cần
+        }
+
+        // Khởi chạy khi mở trang
+        updateUI();
+    </script>
+</body>
+</html>

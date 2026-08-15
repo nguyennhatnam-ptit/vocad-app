@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Defender - VocabApp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=6"> 
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">Vocab<span>App</span></a>
+        <ul>
+            <li><a href="index.html">Homepage</a></li>
+            <li><a href="tu-vung.html">Vocabulary</a></li>
+            <li><a href="on-tap.html">Flashcard</a></li>
+            <li><a href="kiem-tra.html">Memory test</a></li>
+            <li><a href="game.html" class="active">🎮 Game</a></li>
+        </ul>
+        <div class="user-profile" id="user-profile">
+            <button class="login-btn" onclick="window.loginWithGoogle()">🔑 Đăng nhập</button>
+        </div>
+    </nav>
+
+    <!-- MÀN HÌNH CHÍNH ĐÃ ĐƯỢC MỞ RỘNG TỐI ĐA -->
+    <div class="card" style="padding: 20px; max-width: 100%; margin: 0 auto; height: 75vh; display: flex; flex-direction: column;">
+        <div id="game-container" style="flex: 1; height: auto; margin-bottom: 15px; border-radius: 16px;">
+            <div class="game-hud">
+                <div class="hp-bar" id="hp-display">❤️❤️❤️</div>
+                <div class="combo-text" id="combo-display">Combo x2!</div>
+                <div class="score-board">Điểm: <span id="score-display">0</span></div>
+            </div>
+            
+            <div class="target-radar" id="target-vi">Sẵn sàng...</div>
+        </div>
+
+        <input type="text" id="game-input" placeholder="" disabled autocomplete="off" style="margin-bottom: 0;">
+        <button id="start-game-btn" onclick="startGame()" style="margin-top: 15px;">🚀 BẮT ĐẦU CHIẾN ĐẤU</button>
+    </div>
+
+    <script type="module" src="firebase-auth.js?v=2"></script>
+
+    <script>
+        const vocabulary = JSON.parse(localStorage.getItem("vocabulary")) || [];
+        const container = document.getElementById('game-container');
+        const inputField = document.getElementById('game-input');
+        const startBtn = document.getElementById('start-game-btn');
+        
+        let hp = 3, score = 0, combo = 0;
+        let activeWords = []; 
+        let currentTarget = null; 
+        let gameAnimationId;
+        let isGameOver = false;
+        let fallSpeed = 0.8; 
+        let isSpawning = false; 
+
+        // --- BỘ TỔNG HỢP ÂM THANH 8-BIT (WEB AUDIO API) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'shoot') {
+                // Tiếng Laser (Pew!)
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'error') {
+                // Tiếng nổ trầm (Bùm!)
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'gameover') {
+                // Tiếng tút tút thất bại
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 1.5);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 1.5);
+            }
+        }
+        // ----------------------------------------------------
+
+        function startGame() {
+            if (vocabulary.length < 4) {
+                alert("Bạn cần có ít nhất 4 từ vựng trong kho để chơi game này!");
+                return;
+            }
+            
+            initAudio(); // Kích hoạt loa khi người dùng bấm Start
+
+            if (gameAnimationId) {
+                cancelAnimationFrame(gameAnimationId);
+            }
+            
+            hp = 3; score = 0; combo = 0; fallSpeed = 0.8; 
+            isGameOver = false; isSpawning = false;
+            activeWords = [];
+            container.querySelectorAll('.falling-word').forEach(w => w.remove());
+            
+            updateHUD();
+            inputField.disabled = false;
+            inputField.value = "";
+            inputField.focus();
+            startBtn.style.display = "none";
+            
+            spawnWave();
+            gameLoop();
+        }
+
+        function spawnWave() {
+            if (isGameOver) return;
+            
+            let shuffled = [...vocabulary].sort(() => 0.5 - Math.random());
+            currentTarget = shuffled[0]; 
+            document.getElementById('target-vi').innerText = currentTarget.vi.toUpperCase();
+
+            let wordsToDrop = [currentTarget, shuffled[1], shuffled[2]];
+            wordsToDrop = wordsToDrop.sort(() => 0.5 - Math.random());
+
+            wordsToDrop.forEach((wordObj, index) => {
+                let wordEl = document.createElement('div');
+                wordEl.className = 'falling-word';
+                wordEl.innerText = wordObj.en;
+                
+                let colWidth = container.clientWidth / 3;
+                let randomX = (index * colWidth) + (Math.random() * (colWidth - 80)); 
+                
+                wordEl.style.left = `${randomX}px`;
+                wordEl.style.top = `-50px`; 
+                
+                container.appendChild(wordEl);
+                
+                activeWords.push({
+                    el: wordEl,
+                    text: wordObj.en,
+                    isCorrect: wordObj.en === currentTarget.en,
+                    y: -50 - (Math.random() * 50) 
+                });
+            });
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+            let containerHeight = container.clientHeight;
+            
+            for (let i = activeWords.length - 1; i >= 0; i--) {
+                let word = activeWords[i];
+                word.y += fallSpeed;
+                word.el.style.top = `${word.y}px`;
+
+                if (word.y > containerHeight - 60) {
+                    word.el.remove();
+                    if (word.isCorrect) takeDamage();
+                    activeWords.splice(i, 1);
+                }
+            }
+
+            if (activeWords.length === 0 && !isGameOver && !isSpawning) {
+                isSpawning = true; 
+                setTimeout(() => {
+                    spawnWave();
+                    isSpawning = false; 
+                }, 500);
+            }
+
+            gameAnimationId = requestAnimationFrame(gameLoop);
+        }
+
+        inputField.addEventListener('input', (e) => {
+            let typedText = e.target.value.trim().toLowerCase();
+            if (typedText === "") return;
+
+            let hitIndex = activeWords.findIndex(w => w.text === typedText);
+
+            if (hitIndex !== -1) {
+                let hitWord = activeWords[hitIndex];
+                
+                if (hitWord.isCorrect) {
+                    hitWord.el.classList.add('correct-hit');
+                    playSound('shoot'); // Phát tiếng bắn Laser
+                    score += 10 + (combo * 2);
+                    combo++;
+                    fallSpeed += 0.05; 
+                    inputField.value = "";
+                    
+                    activeWords.forEach(w => w.el.remove());
+                    activeWords = []; 
+                } else {
+                    hitWord.el.classList.add('wrong-hit');
+                    takeDamage();
+                    inputField.value = "";
+                    setTimeout(() => {
+                        hitWord.el.remove();
+                        activeWords.splice(hitIndex, 1);
+                    }, 300);
+                }
+                updateHUD();
+            }
+        });
+
+        function takeDamage() {
+            hp--; combo = 0; updateHUD();
+            container.style.animation = "shakeError 0.4s";
+            setTimeout(() => container.style.animation = "", 400);
+
+            if (hp <= 0) {
+                isGameOver = true;
+                playSound('gameover'); // Phát tiếng Game Over
+                cancelAnimationFrame(gameAnimationId);
+                document.getElementById('target-vi').innerText = "GAME OVER!";
+                inputField.disabled = true;
+                startBtn.style.display = "block";
+                startBtn.innerText = "🔄 CHƠI LẠI";
+            } else {
+                playSound('error'); // Phát tiếng mất máu
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('hp-display').innerText = "❤️".repeat(hp) + "🖤".repeat(3 - hp);
+            let comboEl = document.getElementById('combo-display');
+            if (combo >= 2) {
+                comboEl.innerText = `Combo x${combo}!`;
+                comboEl.classList.add('show');
+                setTimeout(() => comboEl.classList.remove('show'), 1000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm tra Trí nhớ - VocabApp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">Vocab<span>App</span></a>
+        <ul>
+            <li><a href="index.html">Homepage</a></li>
+            <li><a href="tu-vung.html">Vocabulary</a></li>
+            <li><a href="on-tap.html">Flashcard</a></li>
+            <li><a href="kiem-tra.html" class="active">Memory test</a></li>
+            <li><a href="game.html">🎮 Game</a></li>
+        </ul>
+        <div class="user-profile" id="user-profile">
+            <button class="login-btn" onclick="window.loginWithGoogle()">🔑 Đăng nhập</button>
+        </div>
+    </nav>
+
+    <div class="card" style="max-width: 500px; margin: 0 auto;">
+        <h3>Bài Kiểm Tra</h3>
+        
+        <div class="streak-badge hidden" id="streak-badge">
+            <span class="streak-icon">🔥</span> Chuỗi đúng: <span id="streak-count">0</span>
+        </div>
+
+        <div class="mode-options" id="mode-selection">
+            <label class="mode-card">
+                <input type="radio" name="quiz-mode" value="en-vi" checked>
+                <div class="mode-content">
+                    <strong>🇬🇧 Nhìn Tiếng Anh -> Gõ Tiếng Việt</strong>
+                    <small>Luyện khả năng dịch và đọc hiểu.</small>
+                </div>
+            </label>
+            <label class="mode-card">
+                <input type="radio" name="quiz-mode" value="vi-en">
+                <div class="mode-content">
+                    <strong>🇻🇳 Nhìn Tiếng Việt -> Gõ Tiếng Anh</strong>
+                    <small>Luyện khả năng nhớ từ và chính tả.</small>
+                </div>
+            </label>
+            <button id="start-btn" onclick="startQuiz()">🚀 Bắt đầu ngay</button>
+        </div>
+
+        <div id="quiz-area" class="hidden">
+            <div id="question-word">Đang tải...</div>
+            <input type="text" id="answer-input" placeholder="Gõ đáp án của bạn vào đây..." autocomplete="off">
+            <button onclick="checkAnswer()">Kiểm tra 🎯</button>
+            <div id="feedback" class="hidden"></div>
+            <div class="stat">Tổng số câu đã làm: <span id="total-done">0</span></div>
+        </div>
+    </div>
+
+    <script type="module" src="firebase-auth.js?v=2"></script>
+
+    <script>
+        let vocabulary = JSON.parse(localStorage.getItem("vocabulary")) || [];
+        let currentQuestion = null;
+        let quizMode = "en-vi"; 
+        let streak = 0;
+        let totalDone = 0;
+
+        function startQuiz() {
+            if (vocabulary.length === 0) {
+                alert("Kho từ vựng trống! Vui lòng thêm từ vựng trước khi kiểm tra.");
+                return;
+            }
+            
+            const selectedMode = document.querySelector('input[name="quiz-mode"]:checked');
+            if (selectedMode) {
+                quizMode = selectedMode.value;
+            }
+            
+            document.getElementById("mode-selection").classList.add("hidden");
+            document.getElementById("quiz-area").classList.remove("hidden");
+            
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            const randomIndex = Math.floor(Math.random() * vocabulary.length);
+            currentQuestion = vocabulary[randomIndex];
+            
+            const qWordEl = document.getElementById("question-word");
+            if (quizMode === "en-vi") {
+                qWordEl.innerText = currentQuestion.en;
+            } else {
+                qWordEl.innerText = currentQuestion.vi;
+            }
+            
+            document.getElementById("answer-input").value = "";
+            document.getElementById("feedback").classList.add("hidden");
+            document.getElementById("answer-input").focus();
+        }
+
+        // TÍNH NĂNG MỚI: Hàm tẩy dấu Tiếng Việt
+        function removeAccents(str) {
+            return str.normalize('NFD')
+                      .replace(/[\u0300-\u036f]/g, '')
+                      .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+        }
+
+        function checkAnswer() {
+            const inputEl = document.getElementById("answer-input");
+            const userAnswer = inputEl.value.trim().toLowerCase();
+            const feedbackEl = document.getElementById("feedback");
+            
+            if (userAnswer === "") {
+                inputEl.classList.add("shake-error");
+                setTimeout(() => inputEl.classList.remove("shake-error"), 400);
+                return;
+            }
+
+            // Lấy đáp án đúng dựa theo chế độ
+            let correctAnswer = (quizMode === "en-vi") ? currentQuestion.vi : currentQuestion.en;
+            
+            // Xóa dấu cả đáp án người dùng và đáp án gốc để so sánh
+            let normalizedUser = removeAccents(userAnswer);
+            let normalizedCorrect = removeAccents(correctAnswer);
+            
+            feedbackEl.classList.remove("hidden", "correct", "incorrect");
+            totalDone++;
+            document.getElementById("total-done").innerText = totalDone;
+
+            if (normalizedUser === normalizedCorrect) {
+                // ĐÚNG
+                feedbackEl.innerText = `✅ Tuyệt vời! Đáp án chuẩn: ${correctAnswer}`;
+                feedbackEl.classList.add("correct");
+                streak++;
+                updateStreak();
+                
+                setTimeout(() => {
+                    nextQuestion();
+                }, 1500);
+            } else {
+                // SAI
+                feedbackEl.innerHTML = `❌ Sai rồi!<br>Đáp án đúng là: <b>${correctAnswer}</b>`;
+                feedbackEl.classList.add("incorrect");
+                inputEl.classList.add("shake-error");
+                setTimeout(() => inputEl.classList.remove("shake-error"), 400);
+                streak = 0;
+                updateStreak();
+            }
+        }
+
+        function updateStreak() {
+            const badge = document.getElementById("streak-badge");
+            if (streak >= 3) {
+                badge.classList.remove("hidden");
+                document.getElementById("streak-count").innerText = streak;
+            } else {
+                badge.classList.add("hidden");
+            }
+        }
+
+        // Bấm Enter để kiểm tra
+        document.getElementById("answer-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                checkAnswer();
+            }
+        });
+    </script>
+</body>
+</html>

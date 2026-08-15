@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ôn tập Flashcard - VocabApp</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">Vocab<span>App</span></a>
+        <ul>
+            <li><a href="index.html">Homepage</a></li>
+            <li><a href="tu-vung.html">Vocabulary</a></li>
+            <li><a href="on-tap.html" class="active">Flashcard</a></li>
+            <li><a href="kiem-tra.html">Memory test</a></li>
+            <li><a href="game.html">🎮 Game</a></li>
+        </ul>
+        <div class="user-profile" id="user-profile">
+            <button class="login-btn" onclick="window.loginWithGoogle()">🔑 Đăng nhập</button>
+        </div>
+    </nav>
+
+    <div class="card" style="text-align: center;">
+        <h3 style="border-bottom: none; margin-bottom: 10px;">Flashcard</h3>
+        
+        <div class="flashcard-container" id="fc-container" onclick="flipCard()">
+            <div class="flashcard" id="flashcard">
+                <div class="flashcard-face">
+                    <div class="fc-word" id="fc-front-word">Vui lòng thêm từ vựng</div>
+                    <div class="fc-hint">Chạm vào thẻ để lật 👆</div>
+                </div>
+                <div class="flashcard-face flashcard-back">
+                    <div class="fc-meaning" id="fc-back-meaning">...</div>
+                    <div class="fc-ipa" id="fc-back-ipa"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fc-controls">
+            <button onclick="prevCard()" class="fc-btn">⬅️ TRƯỚC</button>
+            <div class="fc-counter"><span id="current-index">0</span> / <span id="total-cards">0</span></div>
+            <button onclick="nextCard()" class="fc-btn">TIẾP ➡️</button>
+        </div>
+    </div>
+
+    <script type="module" src="firebase-auth.js?v=2"></script>
+
+    <script>
+        let vocabulary = JSON.parse(localStorage.getItem("vocabulary")) || [];
+        let currentIndex = 0;
+        let isFlipped = false;
+
+        function updateFlashcard() {
+            if (vocabulary.length === 0) {
+                document.getElementById("fc-front-word").innerText = "Chưa có từ vựng nào!";
+                document.getElementById("fc-back-meaning").innerText = "Hãy vào phần Quản lý để thêm nhé.";
+                return;
+            }
+            
+            const word = vocabulary[currentIndex];
+            document.getElementById("fc-front-word").innerText = word.en;
+            document.getElementById("fc-back-meaning").innerText = word.vi;
+            document.getElementById("fc-back-ipa").innerText = word.ipa ? `/${word.ipa}/` : "";
+            
+            document.getElementById("current-index").innerText = currentIndex + 1;
+            document.getElementById("total-cards").innerText = vocabulary.length;
+            
+            // Đảm bảo thẻ luôn úp khi chuyển từ
+            isFlipped = false;
+            document.getElementById("flashcard").classList.remove("is-flipped");
+        }
+
+        function flipCard() {
+            if (vocabulary.length === 0) return;
+            isFlipped = !isFlipped;
+            document.getElementById("flashcard").classList.toggle("is-flipped");
+        }
+
+        function nextCard() {
+            if (vocabulary.length === 0) return;
+            currentIndex = (currentIndex + 1) % vocabulary.length;
+            updateFlashcard();
+        }
+
+        function prevCard() {
+            if (vocabulary.length === 0) return;
+            currentIndex = (currentIndex - 1 + vocabulary.length) % vocabulary.length;
+            updateFlashcard();
+        }
+
+        // Khởi động
+        updateFlashcard();
+    </script>
+</body>
+</html>
