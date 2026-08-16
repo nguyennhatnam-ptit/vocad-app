@@ -9,18 +9,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=6"> 
     
-    <!-- GHI ĐÈ CSS ĐỂ ÉP MÀN HÌNH GAME RỘNG RA TỐI ĐA -->
     <style>
+        /* Ép màn hình siêu to khổng lồ */
         body { 
-            max-width: 1200px !important; /* Mở rộng tối đa 1200px thay vì 850px */
-        }
-        #game-container { 
-            height: 65vh !important; /* Tăng chiều cao không gian chiến đấu */
+            max-width: 1200px !important; 
         }
         .falling-word {
-            font-size: 15px; /* Giảm nhẹ font để chứa được các cụm từ dài */
+            font-size: 15px; 
             padding: 8px 12px;
             white-space: nowrap;
+            font-weight: 700;
         }
     </style>
 </head>
@@ -39,8 +37,11 @@
         </div>
     </nav>
 
-    <div class="card" style="padding: 20px; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column;">
-        <div id="game-container" style="flex: 1; margin-bottom: 15px; border-radius: 16px;">
+    <!-- Khối thẻ Card được ép style cứng để không bị mất -->
+    <div class="card" style="padding: 20px; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);">
+        
+        <!-- Khối Màn hình Game cũng được ép style cứng để chắc chắn hiện ra -->
+        <div id="game-container" style="flex: 1; height: 60vh; min-height: 400px; margin-bottom: 15px; border-radius: 16px; position: relative; background: #0b132b; border: 2px solid #00f5d4; overflow: hidden; box-shadow: 0 0 30px rgba(0, 245, 212, 0.2) inset;">
             <div class="game-hud">
                 <div class="hp-bar" id="hp-display">❤️❤️❤️</div>
                 <div class="combo-text" id="combo-display">Combo x2!</div>
@@ -54,7 +55,7 @@
         <button id="start-game-btn" onclick="startGame()" style="margin-top: 15px;">🚀 BẮT ĐẦU CHIẾN ĐẤU</button>
     </div>
 
-    <!-- Nhớ đổi ?v=3 thành phiên bản mà bạn đang dùng ở các trang khác nếu cần -->
+    <!-- Nhớ dùng đúng số phiên bản ở đây để ép trình duyệt tải Firebase mới -->
     <script type="module" src="firebase-auth.js?v=999"></script>
 
     <script>
@@ -113,9 +114,9 @@
         }
 
         function startGame() {
-            // Yêu cầu kho phải có đủ 5 từ để tạo thành 1 đợt tấn công
+            // Cần 5 từ để lấp đầy 5 làn đường
             if (vocabulary.length < 5) {
-                alert("Bạn cần có ít nhất 5 từ vựng trong kho để chơi chế độ mới này!");
+                alert("Bạn cần có ít nhất 5 từ vựng trong kho để chơi chế độ này!");
                 return;
             }
             
@@ -144,7 +145,7 @@
             currentTarget = shuffled[0]; 
             document.getElementById('target-vi').innerText = currentTarget.vi.toUpperCase();
 
-            // Lấy 5 từ (1 đúng + 4 bẫy) thay vì 3 từ như trước
+            // 1 từ đúng, 4 từ bẫy rơi xuống cùng lúc
             let wordsToDrop = [currentTarget, shuffled[1], shuffled[2], shuffled[3], shuffled[4]];
             wordsToDrop = wordsToDrop.sort(() => 0.5 - Math.random());
 
@@ -155,13 +156,11 @@
                 wordEl.className = 'falling-word';
                 wordEl.innerText = wordObj.en;
                 
-                // Chia màn hình thành 5 "làn đường" để từ không đè lên nhau
+                // Chia màn hình 5 làn để chữ không chạm nhau
                 let colWidth = container.clientWidth / wordCount;
-                
-                // Tính tọa độ X an toàn (cộng thêm khoảng đệm để không tràn ra ngoài)
                 let randomX = (index * colWidth) + 10 + (Math.random() * (colWidth - 80)); 
                 
-                // Giới hạn để từ không bị văng ra khỏi mép trái/phải màn hình
+                // Giữ chữ trong màn hình
                 if (randomX < 10) randomX = 10;
                 let maxX = container.clientWidth - 150; 
                 if (randomX > maxX) randomX = maxX;
@@ -173,9 +172,9 @@
                 
                 activeWords.push({
                     el: wordEl,
-                    text: wordObj.en.toLowerCase(), // Lưu dạng chữ thường để đối chiếu dễ hơn
+                    text: wordObj.en.toLowerCase(), 
                     isCorrect: wordObj.en === currentTarget.en,
-                    // Cho từ rơi ở các độ cao khác nhau (tránh rớt thành 1 hàng ngang)
+                    // Cho từ rơi ở các độ cao lệch nhau
                     y: -50 - (Math.random() * 120) 
                 });
             });
@@ -202,7 +201,7 @@
                 setTimeout(() => {
                     spawnWave();
                     isSpawning = false; 
-                }, 400); // Rút ngắn thời gian chờ đợt mới để game dồn dập hơn
+                }, 400); // Game dồn dập hơn
             }
 
             gameAnimationId = requestAnimationFrame(gameLoop);
