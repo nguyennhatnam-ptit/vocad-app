@@ -7,18 +7,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Vẫn nạp style.css để lấy style nút bấm, navbar -->
     <link rel="stylesheet" href="style.css?v=6"> 
     
     <style>
-        /* Ép màn hình siêu to khổng lồ */
+        /* TẮT MỌI GIỚI HẠN KÍCH THƯỚC CỦA STYLE.CSS */
         body { 
-            max-width: 1200px !important; 
+            max-width: 100% !important; /* Cho phép rộng 100% màn hình */
+            height: 100vh !important; /* Cao vừa khít 100% màn hình */
+            margin: 0 !important; 
+            padding: 15px 20px !important;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Chống xuất hiện thanh cuộn dư thừa */
         }
+
+        /* Khối bao bọc Game tự động giãn nở */
+        .game-wrapper {
+            flex: 1; /* Lấy toàn bộ không gian còn thừa lại của body */
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        /* Sân chơi Game */
+        #game-container {
+            flex: 1; /* Ép sân chơi cao tối đa */
+            width: 100%;
+            position: relative;
+            background: #0b132b;
+            border: 2px solid #00f5d4;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 245, 212, 0.2) inset;
+            margin-bottom: 15px;
+        }
+
         .falling-word {
             font-size: 15px; 
-            padding: 8px 12px;
+            padding: 8px 14px;
             white-space: nowrap;
             font-weight: 700;
+        }
+
+        /* Ẩn bớt thanh điều hướng trên điện thoại nếu màn hình quá lùn để nhường chỗ cho Game */
+        @media (max-height: 700px) {
+            nav { padding: 8px 15px !important; margin-bottom: 10px !important; }
+            .logo { font-size: 18px !important; }
         }
     </style>
 </head>
@@ -37,11 +80,9 @@
         </div>
     </nav>
 
-    <!-- Khối thẻ Card được ép style cứng để không bị mất -->
-    <div class="card" style="padding: 20px; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);">
-        
-        <!-- Khối Màn hình Game cũng được ép style cứng để chắc chắn hiện ra -->
-        <div id="game-container" style="flex: 1; height: 60vh; min-height: 400px; margin-bottom: 15px; border-radius: 16px; position: relative; background: #0b132b; border: 2px solid #00f5d4; overflow: hidden; box-shadow: 0 0 30px rgba(0, 245, 212, 0.2) inset;">
+    <!-- Đã thay đổi class "card" thành "game-wrapper" để không bị dính giới hạn kích thước cũ -->
+    <div class="game-wrapper">
+        <div id="game-container">
             <div class="game-hud">
                 <div class="hp-bar" id="hp-display">❤️❤️❤️</div>
                 <div class="combo-text" id="combo-display">Combo x2!</div>
@@ -55,8 +96,8 @@
         <button id="start-game-btn" onclick="startGame()" style="margin-top: 15px;">🚀 BẮT ĐẦU CHIẾN ĐẤU</button>
     </div>
 
-    <!-- Nhớ dùng đúng số phiên bản ở đây để ép trình duyệt tải Firebase mới -->
-    <script type="module" src="firebase-auth.js?v=999"></script>
+    <!-- Ép tải lại cache Firebase -->
+    <script type="module" src="firebase-auth.js?v=9999"></script>
 
     <script>
         const vocabulary = JSON.parse(localStorage.getItem("vocabulary")) || [];
@@ -72,7 +113,6 @@
         let fallSpeed = 0.8; 
         let isSpawning = false; 
 
-        // --- BỘ TỔNG HỢP ÂM THANH ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
 
@@ -114,7 +154,6 @@
         }
 
         function startGame() {
-            // Cần 5 từ để lấp đầy 5 làn đường
             if (vocabulary.length < 5) {
                 alert("Bạn cần có ít nhất 5 từ vựng trong kho để chơi chế độ này!");
                 return;
@@ -145,7 +184,6 @@
             currentTarget = shuffled[0]; 
             document.getElementById('target-vi').innerText = currentTarget.vi.toUpperCase();
 
-            // 1 từ đúng, 4 từ bẫy rơi xuống cùng lúc
             let wordsToDrop = [currentTarget, shuffled[1], shuffled[2], shuffled[3], shuffled[4]];
             wordsToDrop = wordsToDrop.sort(() => 0.5 - Math.random());
 
@@ -156,13 +194,12 @@
                 wordEl.className = 'falling-word';
                 wordEl.innerText = wordObj.en;
                 
-                // Chia màn hình 5 làn để chữ không chạm nhau
+                // Màn hình rộng rồi, thoải mái chia làn
                 let colWidth = container.clientWidth / wordCount;
-                let randomX = (index * colWidth) + 10 + (Math.random() * (colWidth - 80)); 
+                let randomX = (index * colWidth) + 10 + (Math.random() * (colWidth - 100)); 
                 
-                // Giữ chữ trong màn hình
                 if (randomX < 10) randomX = 10;
-                let maxX = container.clientWidth - 150; 
+                let maxX = container.clientWidth - 160; 
                 if (randomX > maxX) randomX = maxX;
                 
                 wordEl.style.left = `${randomX}px`;
@@ -174,7 +211,6 @@
                     el: wordEl,
                     text: wordObj.en.toLowerCase(), 
                     isCorrect: wordObj.en === currentTarget.en,
-                    // Cho từ rơi ở các độ cao lệch nhau
                     y: -50 - (Math.random() * 120) 
                 });
             });
@@ -201,7 +237,7 @@
                 setTimeout(() => {
                     spawnWave();
                     isSpawning = false; 
-                }, 400); // Game dồn dập hơn
+                }, 400);
             }
 
             gameAnimationId = requestAnimationFrame(gameLoop);
